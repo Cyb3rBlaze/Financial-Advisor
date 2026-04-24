@@ -17,13 +17,19 @@ import {
   KeyRound,
   Landmark,
   Lock,
+  Map,
+  MessageSquare,
   Network,
+  Pencil,
   RefreshCw,
   Scale,
+  Search,
+  Send,
   Shield,
   TrendingUp,
   UserRound,
-  Wallet
+  Wallet,
+  X
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -41,10 +47,20 @@ import type {
   PrivacyThreat,
   ScenarioProjection,
   StrategyModule,
-  StrategyStatus
+  RedisTelemetryResponse,
+  StrategyStatus,
+  TwinResearchRunResult
 } from "@/lib/types";
+import { LifeEventsMindmap } from "@/components/life-events-mindmap";
 
-type DashboardView = "household" | "lifecycle" | "strategies" | "simulations" | "privacy" | "actions";
+type DashboardView =
+  | "household"
+  | "lifecycle"
+  | "life-events"
+  | "strategies"
+  | "simulations"
+  | "privacy"
+  | "actions";
 type OnboardingFormValues = {
   household: string;
   advisor: string;
@@ -79,6 +95,7 @@ const initialPayload: FinancialTwinPayload = {
 const navigation: Array<{ label: string; icon: typeof Home; href: string; view: DashboardView }> = [
   { label: "Household", icon: Home, href: "/", view: "household" },
   { label: "Lifecycle Graph", icon: Network, href: "/lifecycle", view: "lifecycle" },
+  { label: "Life Events", icon: Map, href: "/life-events", view: "life-events" },
   { label: "Strategies", icon: ClipboardCheck, href: "/strategies", view: "strategies" },
   { label: "Simulations", icon: Activity, href: "/simulations", view: "simulations" },
   { label: "Privacy", icon: Shield, href: "/privacy", view: "privacy" },
@@ -107,6 +124,8 @@ export function EthosDashboard() {
   const [payload, setPayload] = useState<FinancialTwinPayload>(initialPayload);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [systemMessage, setSystemMessage] = useState("Backend adapters ready. Add credentials in .env to activate external providers.");
+  const [twinResearch, setTwinResearch] = useState<TwinResearchRunResult | null>(null);
+  const [redisTelemetry, setRedisTelemetry] = useState<RedisTelemetryResponse | null>(null);
 
   const {
     financialTwin,
@@ -127,6 +146,12 @@ export function EthosDashboard() {
   const displayPrivacyMode = financialTwin?.privacyMode ?? "Local-first";
   const [strategyModules, setStrategyModules] = useState<StrategyModule[]>(payload.strategyModules);
   const [projections, setProjections] = useState<ScenarioProjection[]>(payload.projections);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "agent"; content: string }[]>([
+    { role: "agent", content: "Hello, I am your Ethos Agent. How can I assist you with your financial twin today?" }
+  ]);
+  const [isEditingTwin, setIsEditingTwin] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -162,6 +187,31 @@ export function EthosDashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!payload.hasTwin || !payload.financialTwin) {
+      setRedisTelemetry(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadRedisTelemetry() {
+      try {
+        const response = await fetch("/api/redis/telemetry");
+        if (!response.ok || cancelled) return;
+        setRedisTelemetry((await response.json()) as RedisTelemetryResponse);
+      } catch {
+        if (!cancelled) setRedisTelemetry(null);
+      }
+    }
+
+    void loadRedisTelemetry();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [payload.hasTwin, payload.financialTwin?.twinId, payload.documentAnalyses.length]);
+
   const reviewCounts = useMemo(
     () => ({
       approved: strategyModules.filter((module) => module.status === "approved").length,
@@ -193,6 +243,34 @@ export function EthosDashboard() {
       setSystemMessage("Financial Twin created and persisted to Redis.");
     } catch (error) {
       setSystemMessage(error instanceof Error ? error.message : "Unable to create Financial Twin.");
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function editTwin(values: OnboardingFormValues) {
+    setBusyAction("Edit Financial Twin");
+    setSystemMessage("Updating Financial Twin...");
+
+    try {
+      const response = await fetch("/api/financial-twin", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Edit twin failed with ${response.status}`);
+      }
+
+      const data = (await response.json()) as FinancialTwinPayload;
+      setPayload(data);
+      setStrategyModules(data.strategyModules);
+      setProjections(data.projections);
+      setSystemMessage("Financial Twin updated successfully.");
+      setIsEditingTwin(false);
+    } catch (error) {
+      setSystemMessage(error instanceof Error ? error.message : "Unable to update Financial Twin.");
     } finally {
       setBusyAction(null);
     }
@@ -254,6 +332,50 @@ export function EthosDashboard() {
       setSystemMessage(error instanceof Error ? error.message : `${action} failed.`);
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  async function handleSendChatMessage(e: React.FormEvent) {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userInput = chatInput;
+    const newMessages = chatMessages.concat({ role: "user", content: userInput });
+    setChatMessages(newMessages);
+    setChatInput("");
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: newMessages,
+          financialTwin: payload.financialTwin
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Chat request failed");
+      }
+
+      const data = await response.json();
+
+      if (data.updatedTwin && payload.financialTwin) {
+        setPayload((prev) => ({
+          ...prev,
+          financialTwin: prev.financialTwin ? { ...prev.financialTwin, ...data.updatedTwin } : null
+        }));
+      }
+
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "agent", content: data.reply }
+      ]);
+    } catch (error) {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "agent", content: "Sorry, I encountered an error connecting to the agent backend." }
+      ]);
     }
   }
 
@@ -342,49 +464,183 @@ export function EthosDashboard() {
 
         {currentView === "household" ? (
           financialTwin && taxProfile ? (
-          <>
-            <section className="summary-grid" aria-label="Household summary">
-              <MetricCard icon={<Gauge aria-hidden="true" size={19} />} label="Risk posture" value={financialTwin.riskProfile} detail="Psychological profile" />
-              <MetricCard icon={<Wallet aria-hidden="true" size={19} />} label="Reserve status" value={`${financialTwin.contingencyReserve} mo`} detail="Target range: 3-6 months" />
-              <MetricCard icon={<Scale aria-hidden="true" size={19} />} label="Tax efficiency" value={`${financialTwin.taxEfficiencyScore}/100`} detail="W-2 to asset-backed score" />
-              <MetricCard icon={<KeyRound aria-hidden="true" size={19} />} label="Advisor" value={financialTwin.advisor} detail="Fiduciary review owner" />
-            </section>
-            <section className="dashboard-grid household-grid" aria-label="Financial twin model">
-              <article className="panel">
-                <PanelHeader eyebrow="UserTwin" title="Root profile and current node" icon={<UserRound aria-hidden="true" size={20} />} />
-                <div className="kv-grid">
-                  <KeyValue label="Twin ID" value={financialTwin.twinId} />
-                  <KeyValue label="Current life node" value={financialTwin.currentLifeNode} />
-                  <KeyValue label="State" value={financialTwin.stateOfResidence} />
-                  <KeyValue label="Filing status" value={financialTwin.filingStatus} />
-                  <KeyValue label="Last evaluated" value={formatDateTime(financialTwin.lastEvaluatedAt)} />
-                </div>
-              </article>
-              <article className="panel">
-                <PanelHeader eyebrow="TaxProfile" title="Jurisdictional context" icon={<Scale aria-hidden="true" size={20} />} />
-                <div className="kv-grid">
-                  <KeyValue label="Dependents" value={`${taxProfile.dependents}`} />
-                  <KeyValue label="Prior AGI token" value={taxProfile.priorYearAgiToken} />
-                  <KeyValue label="Losses token" value={taxProfile.carryforwardLossesToken} />
-                  <KeyValue label="AMT status" value={taxProfile.amtStatus} />
-                  <KeyValue label="QBI" value={taxProfile.qbiEligibility} />
-                </div>
-              </article>
-              <article className="panel panel-wide">
-                <PanelHeader eyebrow="Consent Records" title="Granular permissions and fiduciary access" icon={<FileCheck2 aria-hidden="true" size={20} />} />
-                <div className="compact-list">
-                  {consentRecords.map((consent) => (
-                    <CompactRow key={consent.scope} title={consent.scope} detail={`Granted ${consent.grantedAt} · Expires ${consent.expiresAt}`} status={consent.status} />
-                  ))}
-                </div>
-              </article>
-              <DocumentUploadPanel
-                analyses={documentAnalyses}
-                busy={busyAction !== null}
-                onAnalyze={analyzeDocuments}
-              />
-            </section>
-          </>
+            <>
+              <section className="summary-grid" aria-label="Household summary">
+                <MetricCard icon={<Gauge aria-hidden="true" size={19} />} label="Risk posture" value={financialTwin.riskProfile} detail="Psychological profile" />
+                <MetricCard icon={<Wallet aria-hidden="true" size={19} />} label="Reserve status" value={`${financialTwin.contingencyReserve} mo`} detail="Target range: 3-6 months" />
+                <MetricCard icon={<Scale aria-hidden="true" size={19} />} label="Tax efficiency" value={`${financialTwin.taxEfficiencyScore}/100`} detail="W-2 to asset-backed score" />
+                <MetricCard icon={<KeyRound aria-hidden="true" size={19} />} label="Advisor" value={financialTwin.advisor} detail="Fiduciary review owner" />
+              </section>
+              {!isEditingTwin && financialTwin ? (
+                <article className="panel panel-wide redis-telemetry-panel" aria-label="Redis time series and memory">
+                  <PanelHeader
+                    eyebrow="Redis vault"
+                    title="Timeline + server memory footprint"
+                    icon={<Database aria-hidden="true" size={20} />}
+                    action={
+                      <button
+                        className="secondary-action"
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch("/api/redis/telemetry");
+                            if (response.ok) {
+                              setRedisTelemetry((await response.json()) as RedisTelemetryResponse);
+                            }
+                          } catch {
+                            /* ignore */
+                          }
+                        }}
+                      >
+                        <RefreshCw aria-hidden="true" size={16} />
+                        Refresh
+                      </button>
+                    }
+                  />
+                  {redisTelemetry === null ? (
+                    <p className="empty-copy">Loading Redis telemetry…</p>
+                  ) : !redisTelemetry.redisAvailable ? (
+                    <p className="empty-copy">Redis is not configured — timeline and memory telemetry are unavailable.</p>
+                  ) : (
+                    <>
+                      {redisTelemetry.memory ? (
+                        <div className="redis-memory-grid" aria-label="Redis INFO memory">
+                          <div>
+                            <span className="eyebrow">Used memory</span>
+                            <p className="redis-stat-value">{redisTelemetry.memory.usedMemoryHuman}</p>
+                            <p className="redis-stat-sub">{redisTelemetry.memory.usedMemoryBytes.toLocaleString()} bytes</p>
+                          </div>
+                          <div>
+                            <span className="eyebrow">Maxmemory policy</span>
+                            <p className="redis-stat-value">{redisTelemetry.memory.maxmemoryPolicy}</p>
+                            <p className="redis-stat-sub">
+                              {redisTelemetry.memory.maxmemoryHuman
+                                ? `Cap ${redisTelemetry.memory.maxmemoryHuman}`
+                                : "No hard maxmemory cap (0)"}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="eyebrow">Fragmentation</span>
+                            <p className="redis-stat-value">
+                              {redisTelemetry.memory.memFragmentationRatio !== null
+                                ? redisTelemetry.memory.memFragmentationRatio.toFixed(2)
+                                : "—"}
+                            </p>
+                            <p className="redis-stat-sub">RSS vs allocator (approx)</p>
+                          </div>
+                          <div>
+                            <span className="eyebrow">Session touch</span>
+                            <p className="redis-stat-value">
+                              {redisTelemetry.sessionFingerprint ? redisTelemetry.sessionFingerprint.lastSeenIso : "—"}
+                            </p>
+                            <p className="redis-stat-sub">
+                              Ephemeral SET · TTL {Math.round(redisTelemetry.sessionTtlSeconds / 3600)}h
+                              {redisTelemetry.sessionFingerprint ? ` · ${redisTelemetry.sessionFingerprint.source}` : ""}
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="subsection-header">
+                        <p className="eyebrow">Timescale</p>
+                        <h3>
+                          Twin event ZSET ({redisTelemetry.timelineTotal} / {redisTelemetry.timelineCap} cap)
+                        </h3>
+                      </div>
+                      {redisTelemetry.timeline.length === 0 ? (
+                        <p className="empty-copy">No timeline rows yet — create, edit, or run document analysis to append events.</p>
+                      ) : (
+                        <div className="redis-timeline-table" role="table" aria-label="Twin timeline newest first">
+                          <div className="redis-timeline-head" role="row">
+                            <span role="columnheader">When</span>
+                            <span role="columnheader">Action</span>
+                            <span role="columnheader">Summary</span>
+                          </div>
+                          {redisTelemetry.timeline.map((row) => (
+                            <div className="redis-timeline-row" key={row.id} role="row">
+                              <span role="cell">{formatDateTime(row.at)}</span>
+                              <span role="cell">
+                                <code>{row.action}</code>
+                              </span>
+                              <span role="cell">{row.summary}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </article>
+              ) : null}
+              <section className="dashboard-grid household-grid" aria-label="Financial twin model">
+                {isEditingTwin ? (
+                  <EditTwinPanel
+                    initialValues={{
+                      household: financialTwin.household,
+                      advisor: financialTwin.advisor,
+                      riskProfile: financialTwin.riskProfile as OnboardingFormValues["riskProfile"],
+                      currentLifeNode: financialTwin.currentLifeNode,
+                      stateOfResidence: financialTwin.stateOfResidence,
+                      filingStatus: financialTwin.filingStatus,
+                      contingencyReserve: financialTwin.contingencyReserve,
+                      taxEfficiencyScore: financialTwin.taxEfficiencyScore,
+                      dependents: taxProfile.dependents
+                    }}
+                    busy={busyAction !== null}
+                    onSave={editTwin}
+                    onCancel={() => setIsEditingTwin(false)}
+                  />
+                ) : (
+                  <>
+                    <article className="panel">
+                      <PanelHeader
+                        eyebrow="UserTwin"
+                        title="Root profile and current node"
+                        icon={<UserRound aria-hidden="true" size={20} />}
+                        action={
+                          <button
+                            className="icon-button"
+                            title="Edit Twin"
+                            onClick={() => setIsEditingTwin(true)}
+                            type="button"
+                          >
+                            <Pencil aria-hidden="true" size={14} />
+                          </button>
+                        }
+                      />
+                      <div className="kv-grid">
+                        <KeyValue label="Twin ID" value={financialTwin.twinId} />
+                        <KeyValue label="Current life node" value={financialTwin.currentLifeNode} />
+                        <KeyValue label="State" value={financialTwin.stateOfResidence} />
+                        <KeyValue label="Filing status" value={financialTwin.filingStatus} />
+                        <KeyValue label="Last evaluated" value={formatDateTime(financialTwin.lastEvaluatedAt)} />
+                      </div>
+                    </article>
+                    <article className="panel">
+                      <PanelHeader eyebrow="TaxProfile" title="Jurisdictional context" icon={<Scale aria-hidden="true" size={20} />} />
+                      <div className="kv-grid">
+                        <KeyValue label="Dependents" value={`${taxProfile.dependents}`} />
+                        <KeyValue label="Prior AGI token" value={taxProfile.priorYearAgiToken} />
+                        <KeyValue label="Losses token" value={taxProfile.carryforwardLossesToken} />
+                        <KeyValue label="AMT status" value={taxProfile.amtStatus} />
+                        <KeyValue label="QBI" value={taxProfile.qbiEligibility} />
+                      </div>
+                    </article>
+                    <article className="panel panel-wide">
+                      <PanelHeader eyebrow="Consent Records" title="Granular permissions and fiduciary access" icon={<FileCheck2 aria-hidden="true" size={20} />} />
+                      <div className="compact-list">
+                        {consentRecords.map((consent) => (
+                          <CompactRow key={consent.scope} title={consent.scope} detail={`Granted ${consent.grantedAt} · Expires ${consent.expiresAt}`} status={consent.status} />
+                        ))}
+                      </div>
+                    </article>
+                  </>
+                )}
+                <DocumentUploadPanel
+                  analyses={documentAnalyses}
+                  busy={busyAction !== null}
+                  onAnalyze={analyzeDocuments}
+                />
+              </section>
+            </>
           ) : (
             <div className="empty-stack">
               <OnboardingPanel busy={busyAction !== null} onCreate={createTwin} />
@@ -398,12 +654,14 @@ export function EthosDashboard() {
         ) : null}
 
         <section className="dashboard-grid page-grid">
-          {!payload.hasTwin && currentView !== "household" ? (
+          {!payload.hasTwin && currentView !== "household" && currentView !== "life-events" ? (
             <EmptyWidget
               title="No Financial Twin yet"
               detail="Create a twin on the Household page before lifecycle events, strategies, simulations, privacy records, or agent actions appear."
             />
           ) : null}
+
+          {currentView === "life-events" ? <LifeEventsMindmap /> : null}
 
           {payload.hasTwin && currentView === "lifecycle" ? (
             <article className="panel panel-large">
@@ -441,7 +699,11 @@ export function EthosDashboard() {
 
           {payload.hasTwin && currentView === "simulations" ? (
             <article className="panel scenario-panel">
-              <PanelHeader eyebrow="Monte Carlo" title="10,000-path regime forecast" icon={<TrendingUp aria-hidden="true" size={20} />} />
+              <PanelHeader
+                eyebrow="Monte Carlo"
+                title="Regime paths vs. comfortable retirement (mock)"
+                icon={<TrendingUp aria-hidden="true" size={20} />}
+              />
               <div className="market-row" aria-label="Market signals">
                 {marketSignals.map((signal) => (
                   <MarketSignalPill key={signal.symbol} signal={signal} />
@@ -485,11 +747,11 @@ export function EthosDashboard() {
                         <dd>{scenario.volatility}</dd>
                       </div>
                       <div>
-                        <dt>Path</dt>
+                        <dt>Retirement comfort</dt>
                         <dd>{scenario.confidence}</dd>
                       </div>
                     </dl>
-                    <p>{scenario.allocation}</p>
+                    <p className="scenario-comfort-copy">{scenario.allocation}</p>
                   </section>
                 ))}
               </div>
@@ -517,6 +779,29 @@ export function EthosDashboard() {
                 >
                   <Network aria-hidden="true" size={17} />
                   Evaluate modules
+                </button>
+                <button
+                  className="secondary-action"
+                  disabled={busyAction !== null || !financialTwin}
+                  onClick={() =>
+                    runBackendAction<TwinResearchRunResult>(
+                      "Twin web research",
+                      "/api/research/plans",
+                      {
+                        body: JSON.stringify({
+                          financialTwin,
+                          taxProfile: taxProfile ?? null
+                        })
+                      },
+                      (result) => {
+                        setTwinResearch(result.data);
+                      }
+                    )
+                  }
+                  type="button"
+                >
+                  <Search aria-hidden="true" size={17} />
+                  Web search + plan ideas
                 </button>
               </div>
               <div className="strategy-list">
@@ -551,6 +836,57 @@ export function EthosDashboard() {
                   </section>
                 ))}
               </div>
+              {twinResearch ? (
+                <>
+                  <div className="subsection-header">
+                    <p className="eyebrow">Twin-backed research</p>
+                    <h3>Web-grounded planning themes (advisor review)</h3>
+                  </div>
+                  <p className="research-disclaimer">
+                    {twinResearch.webSearchEnabled
+                      ? `Used a Tinyfish remote browser for ${twinResearch.rawHitCount} snippets across ${twinResearch.queriesExecuted.length} queries, then OpenAI to cluster ideas.`
+                      : "No live web snippets (Tinyfish + DuckDuckGo scrape produced nothing or Tinyfish is not configured). Themes are model-generated from the twin only."}{" "}
+                    Educational scaffolding — not a recommendation to buy, sell, or file.
+                  </p>
+                  <ul className="research-query-list" aria-label="Queries used for web search">
+                    {twinResearch.queriesExecuted.map((q) => (
+                      <li key={q}>
+                        <code>{q}</code>
+                      </li>
+                    ))}
+                  </ul>
+                  {twinResearch.plans.length > 0 ? (
+                    <div className="research-plan-grid">
+                      {twinResearch.plans.map((plan) => (
+                        <article className={`research-plan-card priority-${plan.priority}`} key={plan.id}>
+                          <header className="research-plan-head">
+                            <span className={`research-priority ${plan.priority}`}>{plan.priority}</span>
+                            <h4>{plan.title}</h4>
+                          </header>
+                          <p className="research-summary">{plan.summary}</p>
+                          <p className="research-rationale">{plan.rationale}</p>
+                          {plan.sourceUrls.length > 0 ? (
+                            <div className="research-sources">
+                              <span className="eyebrow">Sources</span>
+                              <ul>
+                                {plan.sourceUrls.map((url) => (
+                                  <li key={url}>
+                                    <a href={url} rel="noopener noreferrer" target="_blank">
+                                      {url}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="research-empty">No plan themes were returned. Check OpenAI logs or try again.</p>
+                  )}
+                </>
+              ) : null}
             </article>
           ) : null}
 
@@ -601,7 +937,18 @@ export function EthosDashboard() {
                     <Activity aria-hidden="true" size={17} />
                     Start voice review
                   </button>
-                  <button className="secondary-action" disabled={busyAction !== null} onClick={() => runBackendAction("Browser action", "/api/actions/browser")} type="button">
+                  <button
+                    className="secondary-action"
+                    disabled={busyAction !== null}
+                    onClick={() =>
+                      runBackendAction<{ url?: string }>("Browser action", "/api/actions/browser", undefined, (result) => {
+                        if (result.data?.url) {
+                          window.open(result.data.url, "_blank");
+                        }
+                      })
+                    }
+                    type="button"
+                  >
                     <DollarSign aria-hidden="true" size={17} />
                     Open action session
                   </button>
@@ -638,12 +985,141 @@ export function EthosDashboard() {
           ) : null}
         </section>
       </section>
+
+      {/* Agent Chat Window */}
+      {isChatOpen ? (
+        <aside
+          style={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            width: "350px",
+            height: "500px",
+            backgroundColor: "var(--surface-color, #fff)",
+            border: "1px solid var(--border-color, #eaeaea)",
+            borderRadius: "12px",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
+            display: "flex",
+            flexDirection: "column",
+            zIndex: 1000,
+            overflow: "hidden"
+          }}
+        >
+          <header
+            style={{
+              padding: "16px",
+              borderBottom: "1px solid var(--border-color, #eaeaea)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              backgroundColor: "var(--surface-hover, #fafafa)"
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: "16px" }}>Agent Assistant</h3>
+            <button
+              onClick={() => setIsChatOpen(false)}
+              aria-label="Close chat"
+              type="button"
+              style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}
+            >
+              <X size={18} />
+            </button>
+          </header>
+          <div style={{ flex: 1, padding: "16px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px" }}>
+            {chatMessages.map((msg, i) => (
+              <div
+                key={i}
+                style={{
+                  alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+                  backgroundColor: msg.role === "user" ? "var(--primary-color, #0070f3)" : "var(--surface-hover, #f0f0f0)",
+                  color: msg.role === "user" ? "#fff" : "inherit",
+                  padding: "10px 14px",
+                  borderRadius: "18px",
+                  maxWidth: "80%",
+                  fontSize: "14px",
+                  lineHeight: "1.4"
+                }}
+              >
+                <span>{msg.content}</span>
+              </div>
+            ))}
+          </div>
+          <form
+            onSubmit={handleSendChatMessage}
+            style={{
+              padding: "12px",
+              borderTop: "1px solid var(--border-color, #eaeaea)",
+              display: "flex",
+              gap: "8px"
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Ask the agent..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                border: "1px solid var(--border-color, #ccc)",
+                borderRadius: "20px",
+                fontSize: "14px",
+                outline: "none"
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!chatInput.trim()}
+              style={{
+                background: chatInput.trim() ? "var(--primary-color, #0070f3)" : "#ccc",
+                color: "#fff",
+                border: "none",
+                borderRadius: "50%",
+                width: "38px",
+                height: "38px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: chatInput.trim() ? "pointer" : "not-allowed"
+              }}
+            >
+              <Send size={16} />
+            </button>
+          </form>
+        </aside>
+      ) : (
+        <button
+          onClick={() => setIsChatOpen(true)}
+          aria-label="Open agent chat"
+          type="button"
+          style={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            backgroundColor: "var(--primary-color, #0070f3)",
+            color: "#fff",
+            border: "none",
+            borderRadius: "50%",
+            width: "56px",
+            height: "56px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            cursor: "pointer",
+            zIndex: 1000
+          }}
+        >
+          <MessageSquare size={24} />
+        </button>
+      )}
     </main>
   );
 }
 
 function getCurrentView(pathname: string): DashboardView {
   if (pathname.startsWith("/lifecycle")) return "lifecycle";
+  if (pathname.startsWith("/life-events")) return "life-events";
   if (pathname.startsWith("/strategies")) return "strategies";
   if (pathname.startsWith("/simulations")) return "simulations";
   if (pathname.startsWith("/privacy")) return "privacy";
@@ -789,6 +1265,92 @@ function OnboardingPanel({
           <FileCheck2 aria-hidden="true" size={18} />
           Create twin
         </button>
+      </form>
+    </article>
+  );
+}
+
+function EditTwinPanel({
+  initialValues,
+  busy,
+  onSave,
+  onCancel
+}: {
+  initialValues: OnboardingFormValues;
+  busy: boolean;
+  onSave: (values: OnboardingFormValues) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [values, setValues] = useState<OnboardingFormValues>(initialValues);
+
+  function updateText(name: keyof OnboardingFormValues, value: string) {
+    setValues((current) => ({ ...current, [name]: value }));
+  }
+
+  function updateNumber(name: keyof OnboardingFormValues, value: string) {
+    setValues((current) => ({ ...current, [name]: Number(value) }));
+  }
+
+  return (
+    <article className="panel onboarding-panel panel-wide">
+      <PanelHeader eyebrow="Edit Mode" title="Update Financial Twin" icon={<Pencil aria-hidden="true" size={20} />} />
+      <form
+        className="onboarding-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave(values);
+        }}
+      >
+        <label>
+          Household name
+          <input required value={values.household} onChange={(event) => updateText("household", event.target.value)} placeholder="Household name" />
+        </label>
+        <label>
+          Advisor
+          <input value={values.advisor} onChange={(event) => updateText("advisor", event.target.value)} placeholder="Advisor name" />
+        </label>
+        <label>
+          Risk profile
+          <select value={values.riskProfile} onChange={(event) => updateText("riskProfile", event.target.value as OnboardingFormValues["riskProfile"])}>
+            <option>Boglehead</option>
+            <option>Balanced Growth</option>
+            <option>Aggressive Growth</option>
+          </select>
+        </label>
+        <label>
+          Current life node
+          <input value={values.currentLifeNode} onChange={(event) => updateText("currentLifeNode", event.target.value)} placeholder="Current node" />
+        </label>
+        <label>
+          State of residence
+          <input value={values.stateOfResidence} onChange={(event) => updateText("stateOfResidence", event.target.value)} placeholder="State" />
+        </label>
+        <label>
+          Filing status
+          <input value={values.filingStatus} onChange={(event) => updateText("filingStatus", event.target.value)} placeholder="Filing status" />
+        </label>
+        <label>
+          Reserve months
+          <input min="0" max="60" step="0.1" type="number" value={values.contingencyReserve} onChange={(event) => updateNumber("contingencyReserve", event.target.value)} />
+        </label>
+        <label>
+          Tax efficiency score
+          <input min="0" max="100" type="number" value={values.taxEfficiencyScore} onChange={(event) => updateNumber("taxEfficiencyScore", event.target.value)} />
+        </label>
+        <label>
+          Dependents
+          <input min="0" max="20" type="number" value={values.dependents} onChange={(event) => updateNumber("dependents", event.target.value)} />
+        </label>
+        <div style={{ display: "flex", gap: "12px", marginTop: "16px", gridColumn: "1 / -1" }}>
+          <button className="primary-action" disabled={busy} type="submit">
+            <FileCheck2 aria-hidden="true" size={18} />
+            Save changes
+          </button>
+          <button className="secondary-action" disabled={busy} type="button" onClick={onCancel}>
+            <X aria-hidden="true" size={18} />
+            Cancel
+          </button>
+        </div>
       </form>
     </article>
   );
@@ -1033,12 +1595,15 @@ function MetricCard({ detail, icon, label, value }: { detail: string; icon: Reac
   );
 }
 
-function PanelHeader({ eyebrow, icon, title }: { eyebrow: string; icon: ReactNode; title: string }) {
+function PanelHeader({ eyebrow, icon, title, action }: { eyebrow: string; icon: ReactNode; title: string; action?: ReactNode }) {
   return (
     <header className="panel-header">
       <div>
         <p className="eyebrow">{eyebrow}</p>
-        <h2>{title}</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <h2>{title}</h2>
+          {action}
+        </div>
       </div>
       <div className="panel-icon">{icon}</div>
     </header>

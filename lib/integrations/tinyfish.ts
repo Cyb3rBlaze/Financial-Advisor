@@ -16,16 +16,19 @@ export async function createActionBrowserSession(): Promise<IntegrationResult<Ti
     };
   }
 
+  const body: Record<string, unknown> = { timeout_seconds: 300 };
+  if (hasValue(env.tinyfishActionUrl)) {
+    body.url = env.tinyfishActionUrl.trim();
+  }
+
   const response = await fetch("https://api.browser.tinyfish.ai", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-API-Key": env.tinyfishApiKey
     },
-    body: JSON.stringify({
-      url: env.tinyfishActionUrl,
-      timeout_seconds: 300
-    })
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120_000)
   });
 
   if (!response.ok) {

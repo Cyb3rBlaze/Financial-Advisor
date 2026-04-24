@@ -14,7 +14,8 @@ export const env = {
   vapiAssistantId: process.env.VAPI_ASSISTANT_ID ?? "",
   vapiCustomerNumber: process.env.VAPI_CUSTOMER_NUMBER ?? "",
   tinyfishApiKey: process.env.TINYFISH_API_KEY ?? "",
-  tinyfishActionUrl: process.env.TINYFISH_ACTION_URL ?? "https://www.schwab.com/"
+  /** Optional. If unset, Tinyfish starts the session at about:blank (see Browser API). */
+  tinyfishActionUrl: process.env.TINYFISH_ACTION_URL ?? ""
 };
 
 export function hasValue(value: string) {

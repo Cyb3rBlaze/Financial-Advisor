@@ -245,40 +245,45 @@ export const defaultProjections: ScenarioProjection[] = [
     annualReturn: "8.7%",
     volatility: "11.8%",
     endingValue: "$4.82M",
-    confidence: "Top quartile",
-    allocation: "VTI 55 / VXUS 25 / BND 20"
+    confidence: "Comfort: ahead of corridor",
+    allocation:
+      "Strong equity tailwinds lift the mock stack to about $4.82M after 20 years — well inside a comfortable retirement band for many wage-replacement targets, with room to absorb lifestyle creep or retire a bit earlier if policy and health stay favorable. Mock glidepath mix: VTI 55 / VXUS 25 / BND 20."
   },
   {
     name: "Average",
     annualReturn: "5.9%",
     volatility: "9.4%",
     endingValue: "$3.18M",
-    confidence: "Median path",
-    allocation: "VTI 50 / VXUS 25 / BND 25"
+    confidence: "Comfort: on track",
+    allocation:
+      "Middle-of-the-road returns land near $3.18M — consistent with retiring on a conventional timeline if real spending stays near plan, fixed costs stay hedged, and you keep insurance gaps closed through the first decade of draws. Mock glidepath mix: VTI 50 / VXUS 25 / BND 25."
   },
   {
     name: "Bear",
     annualReturn: "2.1%",
     volatility: "14.2%",
     endingValue: "$1.91M",
-    confidence: "Stress case",
-    allocation: "VTI 45 / VXUS 20 / BND 35"
+    confidence: "Comfort: stretched",
+    allocation:
+      "A prolonged slump leaves roughly $1.91M — below a typical “sleep well” comfort zone unless you extend work a few years, lift savings, or trim retirement cash flow; the mock investor would revisit date-of-retirement before calling the plan comfortable. Mock glidepath mix: VTI 45 / VXUS 20 / BND 35."
   },
   {
     name: "Stagflation",
     annualReturn: "1.4%",
     volatility: "12.7%",
     endingValue: "$1.72M",
-    confidence: "Inflation stress",
-    allocation: "VTI 42 / VXUS 18 / BND 40"
+    confidence: "Comfort: inflation shock",
+    allocation:
+      "Stagnant real returns with elevated volatility drag the mock ending near $1.72M — comfortable retirement usually needs higher guaranteed-income share or lower real spending until inflation breaks. Mock glidepath mix: VTI 42 / VXUS 18 / BND 40."
   },
   {
     name: "Lost Decade",
     annualReturn: "0.6%",
     volatility: "10.1%",
     endingValue: "$1.51M",
-    confidence: "Sequence risk",
-    allocation: "VTI 40 / VXUS 20 / BND 40"
+    confidence: "Comfort: sequence-hit",
+    allocation:
+      "Early negative paths compress compounding to about $1.51M — classic sequence-of-returns stress; mock posture is delay draws, build TIPS/bond runway, or phase retirement rather than fixed-date exit. Mock glidepath mix: VTI 40 / VXUS 20 / BND 40."
   }
 ];
 

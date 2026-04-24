@@ -100,24 +100,67 @@ function projectScenario(
     value = value * (1 + annualReturn) + input.annualContribution;
   }
 
+  const endingLabel = formatCurrency(value);
+  const mix = `VTI ${Math.round(input.allocation.VTI * 100)} / VXUS ${Math.round(
+    input.allocation.VXUS * 100
+  )} / BND ${Math.round(input.allocation.BND * 100)}`;
+
+  const { comfortPath, comfortNarrative } = retirementComfortPlacement(name, endingLabel, input.years);
+
   return {
     name,
     annualReturn: formatPercent(annualReturn),
     volatility: formatPercent(volatility),
-    endingValue: formatCurrency(value),
-    confidence:
-      name === "Bull"
-        ? "Top quartile"
-        : name === "Average"
-          ? "Median path"
-          : name === "Stagflation"
-            ? "Inflation stress"
-            : name === "Lost Decade"
-              ? "Sequence risk"
-              : "Stress case",
-    allocation: `VTI ${Math.round(input.allocation.VTI * 100)} / VXUS ${Math.round(
-      input.allocation.VXUS * 100
-    )} / BND ${Math.round(input.allocation.BND * 100)}`
+    endingValue: endingLabel,
+    confidence: comfortPath,
+    allocation: `${comfortNarrative} Mock glidepath mix: ${mix}.`
+  };
+}
+
+/** Plain-language “are you placed to retire comfortably?” copy for mock paths (not a plan recommendation). */
+function retirementComfortPlacement(
+  name: ScenarioProjection["name"],
+  endingLabel: string,
+  years: number
+): { comfortPath: string; comfortNarrative: string } {
+  if (name === "Bull") {
+    return {
+      comfortPath: "Comfort: ahead of corridor",
+      comfortNarrative: `Strong equity tailwinds lift the mock stack to about ${endingLabel} after ${years} years — well inside a comfortable retirement band for many wage-replacement targets, with room to absorb lifestyle creep or retire a bit earlier if policy and health stay favorable.`
+    };
+  }
+
+  if (name === "Average") {
+    return {
+      comfortPath: "Comfort: on track",
+      comfortNarrative: `Middle-of-the-road returns land near ${endingLabel} — consistent with retiring on a conventional timeline if real spending stays near plan, fixed costs stay hedged, and you keep insurance gaps closed through the first decade of draws.`
+    };
+  }
+
+  if (name === "Bear") {
+    return {
+      comfortPath: "Comfort: stretched",
+      comfortNarrative: `A prolonged slump leaves roughly ${endingLabel} — below a typical “sleep well” comfort zone unless you extend work a few years, lift savings, or trim retirement cash flow; the mock investor would revisit date-of-retirement before calling the plan comfortable.`
+    };
+  }
+
+  if (name === "Stagflation") {
+    return {
+      comfortPath: "Comfort: inflation shock",
+      comfortNarrative: `Stagnant real returns with elevated volatility drag the mock ending near ${endingLabel} — comfortable retirement usually needs higher guaranteed-income share or lower real spending until inflation breaks.`
+    };
+  }
+
+  if (name === "Lost Decade") {
+    return {
+      comfortPath: "Comfort: sequence-hit",
+      comfortNarrative: `Early negative paths compress compounding to about ${endingLabel} — classic sequence-of-returns stress; mock posture is delay draws, build TIPS/bond runway, or phase retirement rather than fixed-date exit.`
+    };
+  }
+
+  return {
+    comfortPath: "Comfort: review",
+    comfortNarrative: `Scenario ${name} ends near ${endingLabel} — treat as a planning stress label, not a forecast.`
   };
 }
 

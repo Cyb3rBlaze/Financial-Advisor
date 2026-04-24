@@ -4,6 +4,7 @@ import { analyzeDocumentsWithOpenAI } from "@/lib/integrations/openai-documents"
 import { getIntegrationStatuses } from "@/lib/integrations/status";
 import { getMarketSignals } from "@/lib/integrations/nexla";
 import { readJson, writeJson } from "@/lib/integrations/redis";
+import { appendTwinTimelineEvent } from "@/lib/integrations/redis-telemetry";
 import type { FinancialTwin, FinancialTwinPayload, TaxProfile } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -52,6 +53,14 @@ export async function POST(request: Request) {
   const mergedPayload = mergeAnalysis(basePayload, analysis);
 
   await writeJson(twinKey, mergedPayload);
+
+  if (mergedPayload.financialTwin?.twinId) {
+    await appendTwinTimelineEvent(
+      mergedPayload.financialTwin.twinId,
+      "DOCUMENTS_ANALYZED",
+      "Structured document analysis merged into Redis-backed twin payload."
+    );
+  }
 
   return NextResponse.json({
     state: analysis.status,

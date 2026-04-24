@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  reactStrictMode: true
+const nextConfig = {
+  serverExternalPackages: ["pdfjs-dist", "playwright-core"],
 };
 
 export default nextConfig;

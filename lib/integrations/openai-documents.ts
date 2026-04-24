@@ -36,25 +36,25 @@ const StrategyModuleSchema = z.object({
 });
 
 const FinancialTwinPatchSchema = z.object({
-  household: z.string().optional(),
-  advisor: z.string().optional(),
-  riskProfile: z.enum(["Boglehead", "Balanced Growth", "Aggressive Growth"]).optional(),
-  timeHorizon: z.string().optional(),
-  contingencyReserve: z.number().optional(),
-  taxEfficiencyScore: z.number().optional(),
-  currentLifeNode: z.string().optional(),
-  stateOfResidence: z.string().optional(),
-  filingStatus: z.string().optional()
+  household: z.string().nullish(),
+  advisor: z.string().nullish(),
+  riskProfile: z.enum(["Boglehead", "Balanced Growth", "Aggressive Growth"]).nullish(),
+  timeHorizon: z.string().nullish(),
+  contingencyReserve: z.number().nullish(),
+  taxEfficiencyScore: z.number().nullish(),
+  currentLifeNode: z.string().nullish(),
+  stateOfResidence: z.string().nullish(),
+  filingStatus: z.string().nullish()
 });
 
 const TaxProfilePatchSchema = z.object({
-  filingStatus: z.string().optional(),
-  state: z.string().optional(),
-  dependents: z.number().optional(),
-  priorYearAgiToken: z.string().optional(),
-  carryforwardLossesToken: z.string().optional(),
-  amtStatus: z.enum(["not-exposed", "watching", "exposed"]).optional(),
-  qbiEligibility: z.enum(["eligible", "ineligible", "unknown"]).optional()
+  filingStatus: z.string().nullish(),
+  state: z.string().nullish(),
+  dependents: z.number().nullish(),
+  priorYearAgiToken: z.string().nullish(),
+  carryforwardLossesToken: z.string().nullish(),
+  amtStatus: z.enum(["not-exposed", "watching", "exposed"]).nullish(),
+  qbiEligibility: z.enum(["eligible", "ineligible", "unknown"]).nullish()
 });
 
 const DocumentAnalysisSchema = z.object({

@@ -4,7 +4,7 @@ import type { IntegrationStatus } from "@/lib/types";
 
 let redisClient: RedisClientType | null = null;
 
-export async function getRedisClient() {
+export async function getRedisClient(): Promise<RedisClientType | null> {
   if (!hasValue(env.redisUrl)) {
     return null;
   }
@@ -67,7 +67,7 @@ export async function redisStatus(): Promise<IntegrationStatus> {
     return {
       name: "Redis",
       state: "connected",
-      detail: "Persistent graph memory is online."
+      detail: "Twin JSON + sorted-set timeline (capped) and INFO memory telemetry available."
     };
   } catch (error) {
     return {

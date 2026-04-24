@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getIntegrationStatuses } from "@/lib/integrations/status";
 import { getMarketSignals } from "@/lib/integrations/nexla";
 import { readJson, writeJson } from "@/lib/integrations/redis";
+import { appendTwinTimelineEvent, touchTwinSessionFingerprint } from "@/lib/integrations/redis-telemetry";
 import type { FinancialTwin, FinancialTwinPayload, TaxProfile } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -28,6 +29,8 @@ export async function GET() {
   if (!storedTwin?.financialTwin) {
     return NextResponse.json(emptyPayload(integrationStatuses, []));
   }
+
+  await touchTwinSessionFingerprint(storedTwin.financialTwin.twinId, "GET /api/financial-twin");
 
   return NextResponse.json({
     ...emptyPayload(integrationStatuses, marketSignals.data),
@@ -101,8 +104,71 @@ export async function POST(request: Request) {
   };
 
   await writeJson(twinKey, payload);
+  await appendTwinTimelineEvent(
+    financialTwin.twinId,
+    "TWIN_CREATED",
+    "Financial twin persisted to primary JSON key; timeline ZSET initialized."
+  );
+  await touchTwinSessionFingerprint(financialTwin.twinId, "POST /api/financial-twin");
 
   return NextResponse.json(payload, { status: 201 });
+}
+
+export async function PATCH(request: Request) {
+  const storedTwin = await readJson<Partial<FinancialTwinPayload>>(twinKey);
+
+  if (!storedTwin?.financialTwin) {
+    return NextResponse.json({ error: "Twin not found" }, { status: 404 });
+  }
+
+  const body = (await request.json().catch(() => ({}))) as CreateTwinRequest;
+  const now = new Date().toISOString();
+
+  const updatedTwin: FinancialTwinPayload = {
+    ...(storedTwin as FinancialTwinPayload),
+    financialTwin: {
+      ...storedTwin.financialTwin,
+      household: body.household ? clean(body.household) || "Untitled Household" : storedTwin.financialTwin.household,
+      advisor: body.advisor ? clean(body.advisor) || "Unassigned advisor" : storedTwin.financialTwin.advisor,
+      riskProfile: body.riskProfile ?? storedTwin.financialTwin.riskProfile,
+      contingencyReserve: body.contingencyReserve !== undefined ? clampNumber(body.contingencyReserve, 0, 60, 0) : storedTwin.financialTwin.contingencyReserve,
+      taxEfficiencyScore: body.taxEfficiencyScore !== undefined ? clampNumber(body.taxEfficiencyScore, 0, 100, 0) : storedTwin.financialTwin.taxEfficiencyScore,
+      currentLifeNode: body.currentLifeNode ? clean(body.currentLifeNode) || "Unclassified" : storedTwin.financialTwin.currentLifeNode,
+      stateOfResidence: body.stateOfResidence ? clean(body.stateOfResidence) || "Not set" : storedTwin.financialTwin.stateOfResidence,
+      filingStatus: body.filingStatus ? clean(body.filingStatus) || "Not set" : storedTwin.financialTwin.filingStatus,
+      lastEvaluatedAt: now
+    },
+    taxProfile: storedTwin.taxProfile ? {
+      ...storedTwin.taxProfile,
+      filingStatus: body.filingStatus ? clean(body.filingStatus) || "Not set" : storedTwin.taxProfile.filingStatus,
+      state: body.stateOfResidence ? clean(body.stateOfResidence) || "Not set" : storedTwin.taxProfile.state,
+      dependents: body.dependents !== undefined ? clampNumber(body.dependents, 0, 20, 0) : storedTwin.taxProfile.dependents,
+    } : null,
+    auditLog: [
+      {
+        actor: "user",
+        action: "TWIN_UPDATED",
+        payloadHash: `sha256:${storedTwin.financialTwin.twinId.slice(-12)}`,
+        outcome: "Financial Twin updated via manual edit",
+        timestamp: now,
+        signature: "local-dev"
+      },
+      ...(storedTwin.auditLog ?? [])
+    ]
+  };
+
+  await writeJson(twinKey, updatedTwin);
+  const twinRow = updatedTwin.financialTwin;
+  if (twinRow) {
+    await appendTwinTimelineEvent(
+      twinRow.twinId,
+      "TWIN_PATCHED",
+      "Twin profile fields updated; audit log row prepended in payload."
+    );
+    await touchTwinSessionFingerprint(twinRow.twinId, "PATCH /api/financial-twin");
+  }
+
+  return NextResponse.json(updatedTwin, { status: 200 });
 }
 
 function emptyPayload(

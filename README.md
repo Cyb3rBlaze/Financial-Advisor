@@ -21,7 +21,7 @@ Fill `.env` with the credentials for the providers you want to activate. The app
 - `NEXLA_ACCESS_TOKEN`, `NEXLA_MARKET_FLOW_ID`: checks the configured market data flow.
 - `AKASH_DEPLOYMENT_API_URL`, `AKASH_API_KEY`: runs Monte Carlo jobs on an external Akash-backed endpoint; local simulation is used until configured.
 - `VAPI_API_KEY`, `VAPI_PHONE_NUMBER_ID`, `VAPI_ASSISTANT_ID`, `VAPI_CUSTOMER_NUMBER`: creates advisor voice review calls.
-- `TINYFISH_API_KEY`, `TINYFISH_ACTION_URL`: creates isolated browser action sessions.
+- `TINYFISH_API_KEY`: creates isolated browser sessions via Tinyfish Browser API. `TINYFISH_ACTION_URL` is optional (initial page inside the remote browser; omit for `about:blank`).
 
 ## Backend Routes
 

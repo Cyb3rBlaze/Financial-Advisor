@@ -44,8 +44,8 @@ export async function getIntegrationStatuses(): Promise<IntegrationStatus[]> {
       name: "Tinyfish",
       state: hasValue(env.tinyfishApiKey) ? "configured" : "setup-required",
       detail: hasValue(env.tinyfishApiKey)
-        ? "Browser automation key is configured."
-        : "Add TINYFISH_API_KEY before launching action sessions."
+        ? "Remote browser sessions and twin-backed web research (CDP) are available."
+        : "Add TINYFISH_API_KEY for advisor browser sessions and optional web-backed plan research."
     },
     {
       name: "Chainguard",

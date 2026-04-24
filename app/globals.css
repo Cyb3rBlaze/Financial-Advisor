@@ -726,6 +726,14 @@ dt,
   font-size: 0.82rem;
 }
 
+.scenario-card .scenario-comfort-copy {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  max-width: 52ch;
+}
+
 .strategy-row {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) minmax(180px, 0.38fr);
@@ -1114,5 +1122,546 @@ dt,
   .strategy-title-row {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+/* Life events mindmap */
+.life-events-panel .panel-head h2 {
+  margin-bottom: 0;
+}
+
+.life-events-lede {
+  margin: 0 0 20px;
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.life-mindmap {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-strong);
+  padding: 20px 20px 24px;
+}
+
+.life-mindmap-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+  font-size: 0.85rem;
+}
+
+.life-mindmap-crumb {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--blue);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.life-mindmap-crumb:hover {
+  color: var(--navy);
+}
+
+.life-mindmap-crumb-sep {
+  color: var(--muted);
+  user-select: none;
+}
+
+.life-mindmap-crumb-active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.life-mindmap-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.life-mindmap-row-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 16px 20px;
+  align-items: stretch;
+  width: 100%;
+  max-width: 920px;
+}
+
+.life-mindmap-center-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  order: 0;
+}
+
+.life-mindmap-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 168px;
+  min-height: 168px;
+  padding: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--navy);
+  background: linear-gradient(160deg, var(--blue-soft) 0%, var(--surface) 55%);
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.life-mindmap-center strong {
+  font-size: 1rem;
+  line-height: 1.25;
+  color: var(--navy);
+}
+
+.life-mindmap-center span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.life-mindmap-spoke-vertical {
+  width: 2px;
+  height: 28px;
+  margin: 4px 0 2px;
+  background: linear-gradient(var(--line), transparent);
+  border-radius: 1px;
+}
+
+.life-mindmap-row-bottom {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 420px;
+}
+
+.life-mindmap-hub {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.12s ease;
+}
+
+.life-mindmap-hub:hover {
+  border-color: var(--muted);
+  box-shadow: 0 8px 28px rgba(31, 53, 82, 0.08);
+  transform: translateY(-1px);
+}
+
+.life-mindmap-hub-positive {
+  border-color: #b8d4c4;
+  background: var(--green-soft);
+}
+
+.life-mindmap-hub-negative {
+  border-color: #e4bdb8;
+  background: var(--red-soft);
+}
+
+.life-mindmap-hub-neutral {
+  border-color: #c5d4ea;
+  background: var(--blue-soft);
+}
+
+.life-mindmap-hub-label {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.life-mindmap-hub-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.life-mindmap-hub-count {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
+.life-mindmap-hub-negative .life-mindmap-hub-count {
+  color: var(--red);
+}
+
+.life-mindmap-hub-neutral .life-mindmap-hub-count {
+  color: var(--blue);
+}
+
+.life-mindmap-drill {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 24px 32px;
+  align-items: start;
+}
+
+.life-mindmap-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 6px 10px 6px 4px;
+  border: none;
+  border-radius: 8px;
+  background: var(--subtle);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.life-mindmap-back:hover {
+  background: var(--line);
+}
+
+.life-mindmap-events-title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  color: var(--navy);
+}
+
+.life-mindmap-events-sub {
+  margin: 0 0 14px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.life-mindmap-event-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.life-mindmap-event-chip {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  line-height: 1.35;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+.life-mindmap-event-chip:hover {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.life-mindmap-event-chip.active {
+  border-color: var(--navy);
+  background: var(--blue-soft);
+  box-shadow: inset 3px 0 0 0 var(--navy);
+}
+
+.life-mindmap-detail-col {
+  border-left: 1px solid var(--line);
+  padding-left: 28px;
+  min-height: 200px;
+}
+
+.life-mindmap-detail-title {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  color: var(--navy);
+  line-height: 1.3;
+}
+
+.life-mindmap-detail-eyebrow {
+  margin: 0 0 10px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
+.life-mindmap-checklist {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--ink);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.life-mindmap-checklist li {
+  margin-bottom: 8px;
+}
+
+.life-mindmap-checklist li:last-child {
+  margin-bottom: 0;
+}
+
+.life-mindmap-detail-empty {
+  padding: 24px 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.life-mindmap-detail-empty p {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .life-mindmap-row-top {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+
+  .life-mindmap-center-wrap {
+    order: -1;
+  }
+
+  .life-mindmap-drill {
+    grid-template-columns: 1fr;
+  }
+
+  .life-mindmap-detail-col {
+    border-left: none;
+    border-top: 1px solid var(--line);
+    padding-left: 0;
+    padding-top: 22px;
+  }
+}
+
+/* Twin web research (strategies page) */
+.research-disclaimer {
+  margin: 0 0 14px;
+  max-width: 72ch;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.research-query-list {
+  margin: 0 0 18px;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.research-query-list code {
+  font-size: 0.78rem;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.research-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.research-plan-card {
+  padding: 16px 16px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.research-plan-card.priority-high {
+  border-color: #b8c9e0;
+  background: linear-gradient(165deg, var(--blue-soft) 0%, var(--surface) 40%);
+}
+
+.research-plan-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.research-plan-head h4 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.3;
+  color: var(--navy);
+}
+
+.research-priority {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.research-priority.high {
+  border-color: var(--navy);
+  color: var(--navy);
+  background: var(--blue-soft);
+}
+
+.research-priority.medium {
+  border-color: #c9b896;
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.research-priority.low {
+  color: var(--muted);
+}
+
+.research-summary {
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.research-rationale {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.research-sources {
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.research-sources .eyebrow {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.research-sources ul {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+  word-break: break-word;
+}
+
+.research-sources a {
+  color: var(--blue);
+}
+
+.research-empty {
+  margin: 0;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+/* Redis telemetry (household) */
+.redis-telemetry-panel {
+  margin-bottom: 4px;
+}
+
+.redis-memory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px 20px;
+  margin-bottom: 18px;
+}
+
+.redis-stat-value {
+  margin: 4px 0 2px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.redis-stat-sub {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.redis-timeline-table {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 0.82rem;
+}
+
+.redis-timeline-head,
+.redis-timeline-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.9fr) minmax(100px, 0.5fr) minmax(0, 1.6fr);
+  gap: 10px;
+  padding: 10px 12px;
+  align-items: start;
+}
+
+.redis-timeline-head {
+  font-weight: 800;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--subtle);
+  border-bottom: 1px solid var(--line);
+}
+
+.redis-timeline-row {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-strong);
+}
+
+.redis-timeline-row:last-child {
+  border-bottom: none;
+}
+
+.redis-timeline-row code {
+  font-size: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .redis-timeline-head,
+  .redis-timeline-row {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,5 +1,5 @@
 import { EthosDashboard } from "@/components/ethos-dashboard";
 
-export default function StrategiesPage() {
+export default function LifeEventsPage() {
   return <EthosDashboard />;
 }

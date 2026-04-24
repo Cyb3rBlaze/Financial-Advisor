@@ -101,6 +101,55 @@ export type IntegrationStatus = {
   detail: string;
 };
 
+/** Web-grounded plan ideas from POST /api/research/plans (educational; not advice). */
+export type TwinResearchPlan = {
+  id: string;
+  title: string;
+  summary: string;
+  rationale: string;
+  /** URLs from Tinyfish browser search snippets when scraping succeeds; may be empty. */
+  sourceUrls: string[];
+  priority: "high" | "medium" | "low";
+};
+
+export type TwinResearchRunResult = {
+  plans: TwinResearchPlan[];
+  queriesExecuted: string[];
+  /** True when Tinyfish + Playwright returned at least one scraped snippet. */
+  webSearchEnabled: boolean;
+  rawHitCount: number;
+};
+
+/** Parsed subset of Redis INFO memory — server RAM / policy, not OS page cache directly. */
+export type RedisMemorySnapshot = {
+  usedMemoryBytes: number;
+  usedMemoryHuman: string;
+  maxmemoryBytes: number | null;
+  maxmemoryHuman: string | null;
+  maxmemoryPolicy: string;
+  memFragmentationRatio: number | null;
+};
+
+/** One row in the twin-scoped ZSET timeline (score = epoch ms). */
+export type TwinTimelineEvent = {
+  id: string;
+  scoreMs: number;
+  at: string;
+  action: string;
+  summary: string;
+};
+
+/** GET /api/redis/telemetry — time-ordered twin history + memory + short-TTL session touch. */
+export type RedisTelemetryResponse = {
+  redisAvailable: boolean;
+  memory: RedisMemorySnapshot | null;
+  timeline: TwinTimelineEvent[];
+  timelineTotal: number;
+  timelineCap: number;
+  sessionFingerprint: { lastSeenIso: string; source: string } | null;
+  sessionTtlSeconds: number;
+};
+
 export type PrivacyThreat = {
   adversary: string;
   defense: string;
